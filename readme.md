@@ -26,3 +26,6 @@ solr create -c test2
 add field
 
 post -c test2 ./reviewshort.csv
+
+
+use async to get new data as downloading new data takes a long time (5 second)
