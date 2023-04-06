@@ -125,7 +125,11 @@ async def addData(n):
     csv_file_path = 'crawlreview.csv'
     solr_url = "http://localhost:8983/solr/test2"
     asinlst = await getnewasin()
-    newdata = await getnewdata(asinlst,reviewctr=n)
+    min_score=await pin.min_score
+    maximum_score= await pin.maximum_score
+    input_date_time_end=await pin.input_date_time_end
+    input_date_time_start= await pin.input_date_time_start
+    newdata = await getnewdata(asinlst,mintime=input_date_time_start,maxtime=input_date_time_end,minscore=min_score,maxscore=maximum_score,reviewctr=n)
     print("crawling done")
     df = pd.DataFrame.from_dict(newdata)
     df.to_csv(csv_file_path, index=False, header=True)
