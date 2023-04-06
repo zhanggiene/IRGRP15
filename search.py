@@ -129,7 +129,21 @@ async def addData(n):
     maximum_score= await pin.maximum_score
     input_date_time_end=await pin.input_date_time_end
     input_date_time_start= await pin.input_date_time_start
-    newdata = await getnewdata(asinlst,mintime=input_date_time_start,maxtime=input_date_time_end,minscore=min_score,maxscore=maximum_score,reviewctr=n)
+    start_timestamp=0
+    end_timestamp=int(time.time())
+    if (input_date_time_start):
+        try:
+            start_date_time_obj = datetime.strptime(input_date_time_start, '%d/%m/%Y %H:%M')
+            start_timestamp = (int)(start_date_time_obj.timestamp())
+        except:
+            print("start time string has some problem")
+    if (input_date_time_end):
+        try:
+            end_date_time_obj = datetime.strptime(input_date_time_end, '%d/%m/%Y %H:%M')
+            end_timestamp =  end_date_time_obj.timestamp()
+        except:
+            print("end time string has some problem ")
+    newdata = await getnewdata(asinlst,mintime=start_timestamp,maxtime=end_timestamp,minscore=min_score,maxscore=maximum_score,reviewctr=n)
     print("crawling done")
     df = pd.DataFrame.from_dict(newdata)
     df.to_csv(csv_file_path, index=False, header=True)
