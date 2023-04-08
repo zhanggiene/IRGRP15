@@ -19,9 +19,9 @@ import langid
 from pywebio.platform.tornado_http import start_server as async_start_server
 import httpx
 from html import unescape
+import random
+from classifier import predict
 
-url = "https://httpbin.org/post"
-data = {"message": "Hello, world2!"}
 
 ascendOptions=[
         {
@@ -60,6 +60,36 @@ SearchField=[ {
             "label": "ProductId",
             "value": "ProductId",
         },]
+
+def get_color():
+    return f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
+
+def get_color(value):
+    color_map = {
+        0: "green",
+        1: "grey",
+        2: "red"
+    }
+    return color_map.get(value, "black") 
+def dataframe_to_html_with_random_colors(df):
+    table_html = "<table border=1><tr>"
+    
+    
+    for col in df.columns:
+        table_html += f"<th>{col}</th>"
+    table_html += "</tr>"
+    for _, row in df.iterrows():
+        table_html += "<tr>"
+        classifierResult=predict(row['Text'])
+        color=get_color(classifierResult)
+        for col in df.columns:
+            table_html += f"<td style='background-color:{color};'>{row[col]}</td>"
+        table_html += "</tr>"
+
+    table_html += "</table>"
+    return table_html
+
+
 
 def search_solr(sortField,sortOrder,queryfield=None,query=None, fq=None, start=0, rows=10):
     solr_url = "http://localhost:8983/solr/test2/select"
@@ -208,10 +238,12 @@ async def search_fun():
     results = search_solr(sortField=sort_field,sortOrder=radio,queryfield=query_field,query=query,fq=" AND ".join(fq), start=start, rows=rows)
     docs = results['response']['docs']
     headers = ["ProductId", "ProfileName", "HelpfulnessNumerator", "Score", "Time", "Summary", "Text"]
-    data = [[doc.get(header, "") for header in headers] for doc in docs]
+    df = pd.DataFrame(docs)
+    df=df[headers]
+    table_html = dataframe_to_html_with_random_colors(df)
     with use_scope("query_content",clear=True):
         put_text("Totol results:" + str(results['response']['numFound']))
-        put_table(data, header=headers)
+        put_html(table_html)
         
 async def search_engine():
     put_text("Search Engine")
@@ -229,8 +261,8 @@ async def search_engine():
     put_select('sort_field', options=ascendOptionsField, label='Sort by')])
     put_input('page',label="page number",type=NUMBER,value=1)
     put_input('rows',label="rows per page",type=NUMBER,value=10)
-    put_buttons(['Search'], lambda _: run_async(search_fun()))
-    put_buttons(['score_barchart'], lambda _: score_bar_graph())
+    put_row([put_buttons(['Search'], lambda _: run_async(search_fun())),None,
+    put_buttons(['score_barchart'], lambda _: score_bar_graph())])
     put_input('review_num',label='Number of Additional reviews to crawl',type=NUMBER,value=5)
     put_buttons(['add_data'], lambda _:run_async(add_data_func()))
 
