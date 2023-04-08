@@ -60,18 +60,12 @@ SearchField=[ {
             "label": "ProductId",
             "value": "ProductId",
         },]
-
-def get_color():
-    return f"#{''.join([random.choice('0123456789ABCDEF') for _ in range(6)])}"
-
-def get_color(value):
-    color_map = {
-        0: "green",
-        1: "grey",
-        2: "red"
-    }
-    return color_map.get(value, "black") 
-def dataframe_to_html_with_random_colors(df):
+check_box_options=[{
+            "label": "classification",
+            "value": True,
+            "selected": True,
+        }]
+def dataframe_to_html_with_random_colors(df,classifier=False):
     table_html = "<table border=1><tr>"
     
     
@@ -80,10 +74,14 @@ def dataframe_to_html_with_random_colors(df):
     table_html += "</tr>"
     for _, row in df.iterrows():
         table_html += "<tr>"
-        classifierResult=predict(row['Text'])
-        color=get_color(classifierResult)
+        if (classifier):
+            classifierResult=predict(row['Text'][0])
         for col in df.columns:
-            table_html += f"<td style='background-color:{color};'>{row[col]}</td>"
+            if (classifier):
+                table_html += f"<td style='background-color:{classifierResult};'>{row[col]}</td>"
+            else:
+                table_html += f"<td>{row[col]}</td>"
+                
         table_html += "</tr>"
 
     table_html += "</table>"
@@ -215,6 +213,7 @@ async def search_fun():
     query_field=await pin.query_field
     query= await pin.query
     rows = await pin.rows
+    Checkbox=await pin.Checkbox
     fq.append(f"Score:[{min_score} TO { maximum_score}]")
 
     start_timestamp=0
@@ -240,13 +239,34 @@ async def search_fun():
     headers = ["ProductId", "ProfileName", "HelpfulnessNumerator", "Score", "Time", "Summary", "Text"]
     df = pd.DataFrame(docs)
     df=df[headers]
-    table_html = dataframe_to_html_with_random_colors(df)
+    table_html = dataframe_to_html_with_random_colors(df,Checkbox)
     with use_scope("query_content",clear=True):
         put_text("Totol results:" + str(results['response']['numFound']))
         put_html(table_html)
-        
+
+async def classifyPopUp():
+    sentence= await pin.textarea
+    result=predict(sentence)
+    toastSentense="error"
+    if result=='grey':
+        toastSentense="Neutral Sentence"
+    elif result=='red':
+        toastSentense="Negative Sentence"
+    elif result=='green':
+        toastSentense="Positive Sentence"
+    toast(toastSentense)
 async def search_engine():
-    put_text("Search Engine")
+    #put_text("Search Engine")
+    put_html("""
+        <div style="text-align: center; font-size: 2em;">
+            Search Engine
+        </div>
+    """)
+    put_collapse('Review classifier,Click to expand', [
+         put_textarea('textarea', label='Classify your review', rows=3 ,value=None,
+                 placeholder='This is placeholder for your review', readonly=False),
+        put_buttons(['classifiyString'], lambda _: run_async(classifyPopUp()))
+    ])
     put_row([put_input('query',label='Text input',placeholder="search for anything)"),None,put_select('query_field', options=SearchField, label='Sort by')])
     put_row([
 
@@ -259,9 +279,9 @@ async def search_engine():
     put_row([
     put_radio('radio', options=ascendOptions, label='Sort', inline=False, value=None),None,
     put_select('sort_field', options=ascendOptionsField, label='Sort by')])
-    put_input('page',label="page number",type=NUMBER,value=1)
-    put_input('rows',label="rows per page",type=NUMBER,value=10)
-    put_row([put_buttons(['Search'], lambda _: run_async(search_fun())),None,
+    put_row([put_input('page',label="page number",type=NUMBER,value=1),None,
+    put_input('rows',label="rows per page",type=NUMBER,value=10)])
+    put_row([put_buttons(['Search'], lambda _: run_async(search_fun())),None,put_checkbox('Checkbox', check_box_options),None,
     put_buttons(['score_barchart'], lambda _: score_bar_graph())])
     put_input('review_num',label='Number of Additional reviews to crawl',type=NUMBER,value=5)
     put_buttons(['add_data'], lambda _:run_async(add_data_func()))

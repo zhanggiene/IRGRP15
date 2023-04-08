@@ -4,6 +4,7 @@ LEARNINGRATE=0.01
 import tensorflow as tf
 import re
 from transformers import *
+import numpy as np
 def decontraction(sentence):
 	# Specific
 	sentence = re.sub(r"won\'t", "will not", sentence)
@@ -34,29 +35,30 @@ def preprocess_sentence(review):
 
 	return review.strip()
 
-tokernizer = BertTokenizer.from_pretrained("bert-base-uncased")
-checkpoint = "checkpoint_bert_sentiment_bal_data_expand/variables/variables"
-bert_model =  TFBertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
-bert_model.load_weights(checkpoint).expect_partial()
-bert_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=LEARNINGRATE), 
-				   loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), 
-				   metrics=[tf.keras.metrics.SparseCategoricalAccuracy("accuracy")])
+
 				   
-def predict_internal(model, review):
-	review = preprocess_sentence(review)
-	tokenized_review = tokernizer.encode(review, truncation=True, padding=True, return_tensors="tf")
-	prediction = model.predict(tokenized_review, verbose=0)[0]
-	output = tf.argmax(tf.nn.softmax(prediction, axis=1), axis=1)[0]
-	if output == 0:
-		print("Neutral") # Do gray colour on the review
-	elif output == 1:
-		print("Negative") # Do red colour on the review
-	elif output == 2:
-		print("Positive") # Do green colour on the review
+def predict_internal(model, review,tokenizer):
+    review = preprocess_sentence(review)
+    tokenized_review = tokenizer.encode(review, truncation=True, padding=True, return_tensors="tf")
+    prediction = model.predict(tokenized_review, verbose=0)[0]
+    output = tf.argmax(tf.nn.softmax(prediction, axis=1), axis=1)[0]
+    if output == 0:
+        return "grey" # Do grey colour on the review # nueral 
+    elif output == 1:
+        return "red" # Do red colour on the review  # negative 
+    elif output == 2:
+        return "green" # Do green colour on the review # positive
 
 
 
 
 
 def predict(sentence):
-    return predict(bert_model,sentence)
+    tokernizer = BertTokenizer.from_pretrained("bert-base-uncased")
+    checkpoint = "checkpoint_bert_sentiment_bal_data_expand/variables/variables"
+    bert_model =  TFBertForSequenceClassification.from_pretrained("bert-base-uncased", num_labels=3)
+    bert_model.load_weights(checkpoint).expect_partial()
+    bert_model.compile(optimizer=tf.keras.optimizers.legacy.Adam(learning_rate=0.00002), 
+				   loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True), 
+				   metrics=[tf.keras.metrics.SparseCategoricalAccuracy("accuracy")])
+    return predict_internal(bert_model,sentence,tokernizer)
